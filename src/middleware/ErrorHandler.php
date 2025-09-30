@@ -57,6 +57,7 @@ class ErrorHandler extends SlimErrorHandler
     {
         $class = get_class($e);
         $parts = explode('\\\\', $class);
+
         return end($parts) ?: $class;
     }
 

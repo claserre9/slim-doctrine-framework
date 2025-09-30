@@ -27,9 +27,11 @@ class ValidationMiddleware implements MiddlewareInterface
             $payload = json_encode(['error' => ['code' => 422, 'message' => 'Validation failed', 'details' => $errors]], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
             $response = new SlimResponse(422);
             $response->getBody()->write($payload);
+
             return $response->withHeader('Content-Type', 'application/json');
         }
         // Attach validated data for handlers to use
+
         return $handler->handle($request->withAttribute('validated', $data));
     }
 
@@ -39,6 +41,7 @@ class ValidationMiddleware implements MiddlewareInterface
         if (is_array($parsed)) {
             return array_merge($request->getQueryParams(), $parsed);
         }
+
         return $request->getQueryParams();
     }
 }

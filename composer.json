@@ -7,12 +7,13 @@
     "doctrine/orm": "^3.3",
     "doctrine/dbal": "^4.2",
     "symfony/cache": "^7.3"
-  }
-,
+  },
   "require-dev": {
     "roave/security-advisories": "dev-latest",
     "symfony/var-dumper": "^7.3.0",
-    "phpunit/phpunit": "^10.5"
+    "phpunit/phpunit": "^10.5",
+    "friendsofphp/php-cs-fixer": "^3.64",
+    "phpstan/phpstan": "^1.11"
   },
   "autoload": {
     "psr-4": {"App\\": "src/"}
@@ -21,6 +22,10 @@
     "psr-4": {"tests\\": "tests/"}
   },
   "scripts": {
-    "test": "phpunit --testdox --configuration phpunit.xml"
+    "start": "php -S localhost:8080 -t public",
+    "test": "vendor/bin/phpunit --testdox",
+    "cs:check": "vendor/bin/php-cs-fixer fix --diff --dry-run --ansi -v",
+    "cs:fix": "vendor/bin/php-cs-fixer fix --ansi",
+    "static": "vendor/bin/phpstan analyse --memory-limit=512M"
   }
 }

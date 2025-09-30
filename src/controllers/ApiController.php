@@ -10,7 +10,7 @@ class ApiController
 {
     public function index(Request $request, Response $response, array $args): Response|MessageInterface
     {
-        $data = array('name' => 'Bob', 'age' => 40);
+        $data = ['name' => 'Bob', 'age' => 40];
         $payload = json_encode($data, JSON_THROW_ON_ERROR);
 
         $response->getBody()->write($payload);

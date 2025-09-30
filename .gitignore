@@ -2,3 +2,4 @@
 /.idea/
 .env
 /TASKS.md
+.php-cs-fixer.cache

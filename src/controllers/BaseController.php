@@ -5,7 +5,6 @@ namespace App\controllers;
 use Doctrine\ORM\EntityManager; // kept for BC but not type hinted
 use Psr\Container\ContainerInterface;
 
-
 abstract class BaseController
 {
     protected ?ContainerInterface $container;

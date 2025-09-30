@@ -1,0 +1,4 @@
+parameters:
+	ignoreErrors:
+		# Add collected ignore errors here after running `vendor/bin/phpstan analyse --generate-baseline`
+		[]

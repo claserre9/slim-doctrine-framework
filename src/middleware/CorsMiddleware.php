@@ -32,11 +32,11 @@ class CorsMiddleware implements MiddlewareInterface
     private function applyCors(Response $response, string $origin, array $cors, Request $request): Response
     {
         $allowedOrigins = $cors['origins'] ?? ['*'];
-        $allowedMethods = strtoupper(implode(', ', $cors['methods'] ?? ['GET','POST','PUT','PATCH','DELETE','OPTIONS']));
-        $allowedHeaders = implode(', ', $cors['headers'] ?? ['Content-Type','Authorization','Accept','Origin','X-Requested-With']);
+        $allowedMethods = strtoupper(implode(', ', $cors['methods'] ?? ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']));
+        $allowedHeaders = implode(', ', $cors['headers'] ?? ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With']);
         $exposeHeaders = implode(', ', $cors['expose_headers'] ?? []);
         $credentials = !empty($cors['credentials']);
-        $maxAge = (string)($cors['max_age'] ?? 600);
+        $maxAge = (string) ($cors['max_age'] ?? 600);
 
         $allowOrigin = '*';
         if ($origin && !in_array('*', $allowedOrigins, true)) {

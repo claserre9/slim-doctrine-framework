@@ -11,10 +11,11 @@ class Validator
         $this->errors = [];
         foreach ($rules as $field => $fieldRules) {
             $value = $data[$field] ?? null;
-            foreach ((array)$fieldRules as $rule) {
+            foreach ((array) $fieldRules as $rule) {
                 $this->applyRule($field, $value, $rule);
             }
         }
+
         return empty($this->errors);
     }
 
@@ -28,7 +29,7 @@ class Validator
         [$name, $param] = array_pad(explode(':', $rule, 2), 2, null);
         switch ($name) {
             case 'required':
-                if ($value === null || $value === '' ) {
+                if ($value === null || $value === '') {
                     $this->addError($field, 'is required');
                 }
                 break;
@@ -48,13 +49,13 @@ class Validator
                 }
                 break;
             case 'min':
-                $min = (int)$param;
+                $min = (int) $param;
                 if (is_string($value) && mb_strlen($value) < $min) {
                     $this->addError($field, "must be at least $min characters");
                 }
                 break;
             case 'max':
-                $max = (int)$param;
+                $max = (int) $param;
                 if (is_string($value) && mb_strlen($value) > $max) {
                     $this->addError($field, "must be at most $max characters");
                 }
