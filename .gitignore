@@ -2,3 +2,6 @@
 /.idea/
 .env
 /TASKS.md
+/var/cache/
+/var/data/
+/.phpunit.result.cache
