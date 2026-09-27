@@ -1,11 +1,18 @@
 <?php
 
-namespace App\validation;
+namespace App\Validation;
 
-class Validator
+final class Validator
 {
+    /** @var array<string, list<string>> */
     private array $errors = [];
 
+    /**
+     * Supported rules: required, string, int, email, min:N, max:N (lengths apply to strings).
+     *
+     * @param array<string, mixed>               $data
+     * @param array<string, string|list<string>> $rules
+     */
     public function validate(array $data, array $rules): bool
     {
         $this->errors = [];
@@ -19,12 +26,15 @@ class Validator
         return empty($this->errors);
     }
 
+    /**
+     * @return array<string, list<string>>
+     */
     public function errors(): array
     {
         return $this->errors;
     }
 
-    private function applyRule(string $field, $value, string $rule): void
+    private function applyRule(string $field, mixed $value, string $rule): void
     {
         [$name, $param] = array_pad(explode(':', $rule, 2), 2, null);
         switch ($name) {

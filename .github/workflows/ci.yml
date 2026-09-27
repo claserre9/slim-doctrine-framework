@@ -44,7 +44,7 @@ jobs:
         run: composer run cs:check
 
       - name: Static Analysis (PHPStan)
-        run: composer run static
+        run: composer run analyse
 
       - name: Tests (PHPUnit)
         run: composer run test

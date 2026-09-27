@@ -1,6 +1,6 @@
 # Slim + Doctrine Skeleton
 
-A minimal Slim 4 + Doctrine ORM project with PHP-DI, Dotenv, and a basic API. Includes a health endpoint and environment-driven error display.
+A minimal Slim 4 + Doctrine ORM project with PHP-DI, Dotenv, Doctrine Migrations and a basic JSON API. Includes a health endpoint, CORS, request validation, JSON error responses and a Dockerized dev stack.
 
 ## Requirements
 - PHP 8.2+
@@ -19,31 +19,37 @@ A minimal Slim 4 + Doctrine ORM project with PHP-DI, Dotenv, and a basic API. In
    - Edit .env to match your local setup (DB settings, environment, debug flags)
 
 4. Run the app locally (PHP built-in server)
-   - php -S localhost:8080 -t public
+   - composer start
    - Open http://localhost:8080/health to verify: you should see {"status":"ok"}
 
 ## Environment Variables
 Core flags:
-- APP_ENV: development | production (default: development)
+- APP_ENV: development | production (default: production)
 - APP_DEBUG: 1/0, true/false (default: true when APP_ENV != production)
 
 Database (Doctrine DBAL):
 - DB_DRIVER: pdo_sqlite | pdo_mysql | pdo_pgsql (default: pdo_sqlite)
 - For SQLite:
-  - DB_PATH: absolute/relative path to SQLite file (default: var/data/database.sqlite)
+  - DB_PATH: absolute path, or path relative to the project root (default: var/data/database.sqlite)
 - For MySQL:
   - DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
 - For PostgreSQL:
   - DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
 
+CORS (comma-separated lists):
+- CORS_ORIGINS (default: *), CORS_METHODS, CORS_HEADERS, CORS_EXPOSE_HEADERS
+- CORS_CREDENTIALS (default: 0), CORS_MAX_AGE (default: 600)
+
+Per-environment overrides: create config/settings.{APP_ENV}.php returning a partial settings array.
+
 ## Routes
-- GET /health → {"status":"ok"}
-- GET /api → Example JSON payload
+- GET / and GET /health → {"status":"ok"}
+- GET /api?name=Ada → {"message":"Hello Ada"} (`name` is optional, min. 2 chars; invalid input returns 422)
 
 ## Error Handling
-- Error display is controlled by environment:
-  - In development (or when APP_DEBUG=true), displayErrorDetails is enabled and PHP displays errors.
-  - In production (APP_ENV=production and APP_DEBUG not set/false), user-facing error details are hidden.
+- All errors are returned as JSON: {"error": {"code": 404, "message": "404 Not Found"}}
+- In debug (APP_DEBUG=1, or APP_ENV != production), a `details` key adds the exception type, message and trace.
+- In production, details are hidden; errors are logged via PHP's error_log.
 
 ## Development Tips
 - Update TASKS.md for improvement ideas and backlog.
@@ -51,13 +57,27 @@ Database (Doctrine DBAL):
 - Consider adding Xdebug for step debugging in development.
 
 ## Project Structure
-- public/index.php: Front controller, routes, middleware
-- config/: Container definitions
-- src/: Application code (controllers, entities, config helpers)
+- public/index.php: HTTP front controller
+- bin/console: Doctrine ORM + Migrations CLI
+- config/bootstrap.php: Shared bootstrap (env, container, middleware, routes) used by the front controller, the console and the tests
+- config/settings.php: Application settings, built from environment variables
+- config/container.php: Container definitions
+- config/routes.php: Routes
+- src/: Application code (Controllers, Middleware, Handlers, Validation, Entities, Config)
+- migrations/: Doctrine migrations
 - var/: Runtime/cache (created on demand)
 
-## Running Tests
-- composer test
+## Console & Migrations
+- php bin/console list
+- php bin/console migrations:diff      # generate a migration from entity mapping
+- php bin/console migrations:migrate   # apply migrations
+
+## Running Tests & Quality Checks
+- composer test       # PHPUnit
+- composer analyse    # PHPStan level 6
+- composer cs:check   # PHP-CS-Fixer dry-run (composer cs:fix to apply)
+
+The same checks run in CI (.github/workflows/ci.yml) on PHP 8.2 and 8.3.
 
 ## License
 MIT (or your preferred license).
@@ -89,8 +109,8 @@ Common commands:
 - make test        # run PHPUnit in container
 - make cs          # coding standards check (PHP-CS-Fixer dry-run)
 - make cs-fix      # auto-fix coding standards
-- make static      # static analysis (PHPStan)
-- make migrate     # update DB schema from metadata (fallback without migrations)
+- make analyse     # static analysis (PHPStan)
+- make migrate     # run Doctrine migrations
 - make seed        # seed data (placeholder)
 
 Service endpoints:
@@ -99,7 +119,7 @@ Service endpoints:
 
 Notes:
 - Source code is mounted into the container; edits are reflected immediately.
-- If you prefer MySQL or SQLite, adjust .env accordingly and update docker-compose.yml.
+- The Docker stack always uses its Postgres service (DB_DRIVER/DB_HOST/DB_PORT are fixed in docker-compose.yml), so your local .env can keep SQLite for non-Docker runs.
 
 ## Xdebug in Docker
 
@@ -131,7 +151,7 @@ Troubleshooting:
 A Makefile is included to simplify common tasks:
 - build, up, down, restart, logs
 - bash, sh, composer, install
-- test, cs, cs-fix, static
+- test, cs, cs-fix, analyse
 - migrate, seed, psql
 
 Use `make <target>`; some targets accept variables, for example:
@@ -160,10 +180,7 @@ This repository is not a full production image, but here are recommended steps:
    - Ensure HTTPS is terminated at the load balancer or proxy; set trusted proxies if needed.
 
 4. Database migrations
-   - Recommended: add doctrine/migrations and manage schema via migrations.
-     - composer require doctrine/migrations
-     - vendor/bin/doctrine-migrations migrate --no-interaction --allow-no-migration
-   - Fallback (not ideal for production): ORM schema-tool update (used by `make migrate`).
+   - php bin/console migrations:migrate --no-interaction --allow-no-migration
 
 5. Cache warmup and readiness
    - Composer autoload optimization (see step 2).

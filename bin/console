@@ -1,21 +1,30 @@
 #!/usr/bin/env php
 <?php
 
-use App\config\DoctrineFactory;
+use Doctrine\Migrations\Configuration\EntityManager\ExistingEntityManager;
+use Doctrine\Migrations\Configuration\Migration\ConfigurationArray;
+use Doctrine\Migrations\DependencyFactory;
+use Doctrine\Migrations\Tools\Console\ConsoleRunner as MigrationsConsoleRunner;
+use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\Console\ConsoleRunner;
 use Doctrine\ORM\Tools\Console\EntityManagerProvider\SingleManagerProvider;
 
+/** @var \Slim\App<\Psr\Container\ContainerInterface> $slim */
+$slim      = require __DIR__ . '/../config/bootstrap.php';
+$container = $slim->getContainer();
 
-require_once __DIR__ . '/../vendor/autoload.php';
+$entityManager = $container->get(EntityManagerInterface::class);
 
-$entityManager = DoctrineFactory::createEntityManager();
-$emProvider = new SingleManagerProvider($entityManager);
+$app = ConsoleRunner::createApplication(new SingleManagerProvider($entityManager));
 
-$app = ConsoleRunner::createApplication($emProvider);
+MigrationsConsoleRunner::addCommands($app, DependencyFactory::fromEntityManager(
+    new ConfigurationArray($container->get('settings')['migrations']),
+    new ExistingEntityManager($entityManager),
+));
 
 try {
     $app->run();
 } catch (Exception $e) {
-    echo $e->getMessage();
+    fwrite(STDERR, $e->getMessage() . PHP_EOL);
     exit(1);
 }

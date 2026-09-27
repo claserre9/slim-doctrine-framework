@@ -1,23 +1,15 @@
 <?php
 
-use App\controllers\ApiController;
-use App\middleware\ValidationMiddleware;
-use Psr\Container\ContainerInterface;
+use App\Controllers\ApiController;
+use App\Controllers\HealthController;
+use App\Middleware\ValidationMiddleware;
 use Slim\App;
-use Slim\Psr7\Response;
 
-return static function (App $app, ContainerInterface $container): void {
-    // Health check endpoint
-    $app->get('/health', function ($request, Response $response) {
-        $payload = json_encode(['status' => 'ok'], JSON_THROW_ON_ERROR);
-        $response->getBody()->write($payload);
-        return $response->withHeader('Content-Type', 'application/json');
-    });
+return function (App $app): void {
+    $app->get('/', HealthController::class);
+    $app->get('/health', HealthController::class);
 
-    // Example API route with simple validation example (optional query param `name`)
-    $route = $app->get('/api', [ApiController::class, 'index']);
-    $route->add(new ValidationMiddleware([
-        // 'name' is optional but if present must be a string of min 2
-        'name' => ['string', 'min:2']
-    ]));
+    // Example of per-route validation: `name` is optional, but must be a string of at least 2 chars
+    $app->get('/api', [ApiController::class, 'index'])
+        ->add(new ValidationMiddleware(['name' => ['string', 'min:2']], $app->getResponseFactory()));
 };

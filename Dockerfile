@@ -43,6 +43,9 @@ RUN { \
         echo "xdebug.discover_client_host=${XDEBUG_DISCOVER_CLIENT_HOST}"; \
     } > /usr/local/etc/php/conf.d/xdebug.ini
 
+# Expose container environment variables (docker-compose) to PHP-FPM workers
+RUN echo "clear_env = no" >> /usr/local/etc/php-fpm.d/www.conf
+
 # Create non-root user (www-data is default in php-fpm)
 RUN addgroup -g 1000 -S www && adduser -S www -G www -u 1000 && \
     chown -R www:www /var/www/html

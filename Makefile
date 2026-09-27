@@ -4,7 +4,7 @@ SHELL := /bin/sh
 DC := docker compose
 APP := app
 
-.PHONY: build up down restart logs bash sh composer install test cs cs-fix static migrate seed db psql
+.PHONY: build up down restart logs bash sh composer install test cs cs-fix analyse migrate seed db psql
 
 build:
 	$(DC) build
@@ -42,13 +42,12 @@ cs:
 cs-fix:
 	$(DC) exec $(APP) composer cs:fix
 
-static:
-	$(DC) exec $(APP) composer static
+analyse:
+	$(DC) exec $(APP) composer analyse
 
 # Database helpers
 migrate:
-	# Fallback without migrations package: update schema from metadata
-	$(DC) exec $(APP) php bin/console orm:schema-tool:update --force
+	$(DC) exec $(APP) php bin/console migrations:migrate --no-interaction --allow-no-migration
 
 seed:
 	# Placeholder: implement your seeders here (e.g., a php script under bin/seed.php)

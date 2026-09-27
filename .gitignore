@@ -1,5 +1,28 @@
+# Dependencies
 /vendor/
-/.idea/
+
+# Environment (commit .env.example only)
 .env
+.env.local
+.env.*.local
+
+# Runtime data, cache and logs
+/var/
+
+# Local tool overrides (shared configs are the *.dist files)
+/phpunit.xml
+/phpstan.neon
+/.php-cs-fixer.php
+
+# Tool caches
+/.phpunit.cache/
+/.phpunit.result.cache
+/.php-cs-fixer.cache
+
+# IDE / editors / assistants
+/.idea/
+/.vscode/
+/.claude/settings.local.json
+
+# Personal notes
 /TASKS.md
-.php-cs-fixer.cache

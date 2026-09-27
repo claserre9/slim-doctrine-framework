@@ -9,9 +9,10 @@ services:
     environment:
       APP_ENV: ${APP_ENV:-development}
       APP_DEBUG: ${APP_DEBUG:-1}
-      DB_DRIVER: ${DB_DRIVER:-pdo_pgsql}
-      DB_HOST: ${DB_HOST:-db}
-      DB_PORT: ${DB_PORT:-5432}
+      # The stack ships Postgres: these are fixed so a local .env (e.g. SQLite) can't override them
+      DB_DRIVER: pdo_pgsql
+      DB_HOST: db
+      DB_PORT: 5432
       DB_NAME: ${DB_NAME:-app}
       DB_USER: ${DB_USER:-app}
       DB_PASSWORD: ${DB_PASSWORD:-secret}

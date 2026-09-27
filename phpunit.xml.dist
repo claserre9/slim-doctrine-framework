@@ -1,27 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/10.5/phpunit.xsd"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
          bootstrap="vendor/autoload.php"
-         colors="true"
->
+         colors="true">
     <testsuites>
-        <testsuite name="Project Test Suite">
+        <testsuite name="Application">
             <directory>tests</directory>
         </testsuite>
     </testsuites>
-
-    <coverage>
-        <include>
-            <directory>src</directory>
-        </include>
-    </coverage>
-
+    <php>
+        <!-- Error responses are asserted by the tests: keep Slim's error log out of the output -->
+        <ini name="error_log" value="/dev/null"/>
+    </php>
     <source>
         <include>
             <directory>src</directory>
         </include>
-        <exclude>
-            <directory>vendor</directory>
-        </exclude>
     </source>
 </phpunit>
