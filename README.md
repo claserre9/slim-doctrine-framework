@@ -130,7 +130,9 @@ Xdebug is pre-installed in the PHP-FPM image and configured via environment vari
   - XDEBUG_START_WITH_REQUEST=trigger
   - XDEBUG_CLIENT_PORT=9003
   - XDEBUG_CLIENT_HOST=host.docker.internal (and Linux fallback via host-gateway)
-- To change, edit .env (recommended) or docker-compose.yml.
+- To change, edit .env (recommended) or docker-compose.yml, then restart the stack (`make restart`).
+  Settings are read from the container environment when PHP starts (see docker/php/xdebug.ini), no rebuild needed.
+- Outside docker-compose, Xdebug defaults to `mode=off`.
 
 How to use with PhpStorm (or similar IDE):
 - Ensure your IDE is listening for PHP Debug connections on port 9003.
@@ -169,7 +171,8 @@ This repository is not a full production image, but here are recommended steps:
    - If SQLite: DB_PATH
 
 2. Build an optimized PHP-FPM image
-   - Use the provided Dockerfile as a base.
+   - Use the provided Dockerfile as a base, built without Xdebug:
+     - docker build --build-arg INSTALL_XDEBUG=0 -t your-org/your-app:TAG .
    - Run composer install with --no-dev and optimize autoloader:
      - composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
    - Configure PHP Opcache (already enabled in Dockerfile) and set appropriate memory limits.
