@@ -94,7 +94,7 @@ class HttpTest extends TestCase
             'error' => [
                 'code' => 422,
                 'message' => '422 Unprocessable Entity',
-                'errors' => ['name' => ['This value is too short. It should have 2 characters or more.']],
+                'errors' => ['name' => ['Name must be at least 2 characters long']],
             ],
         ], $this->json($response));
     }

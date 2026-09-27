@@ -10,7 +10,7 @@ use Symfony\Component\Validator\Constraints as Assert;
 final class HelloRequest
 {
     public function __construct(
-        #[Assert\Length(min: 2)]
+        #[Assert\Length(min: 2, minMessage: 'Name must be at least 2 characters long')]
         public readonly ?string $name = null,
     ) {
     }

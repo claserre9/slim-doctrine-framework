@@ -4,6 +4,7 @@ namespace App\Validation;
 
 use Psr\Http\Message\ServerRequestInterface;
 use ReflectionClass;
+use ReflectionException;
 use ReflectionNamedType;
 use ReflectionParameter;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
@@ -12,8 +13,8 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
  * Builds a request DTO from the query params and parsed body, then validates it
  * against its constraint attributes (symfony/validator).
  *
- * Input is matched to the DTO constructor parameters by name; scalar values are
- * cast to the declared type (query strings are always strings) and unknown keys
+ * Name matches input to the DTO constructor parameters; scalar values are
+ * cast to the declared type (query strings are always strings), and unknown keys
  * are ignored. Any error throws a ValidationException (HTTP 422).
  */
 final class RequestMapper
@@ -28,7 +29,7 @@ final class RequestMapper
      *
      * @param class-string<T> $class
      *
-     * @throws ValidationException
+     * @throws ValidationException|ReflectionException
      *
      * @return T
      */
