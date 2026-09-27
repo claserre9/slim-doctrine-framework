@@ -12,9 +12,9 @@ RUN set -eux; \
     if [ "$INSTALL_XDEBUG" = "1" ]; then \
         pecl install xdebug; \
         docker-php-ext-enable xdebug; \
+        pecl clear-cache; \
+        rm -rf /tmp/pear; \
     fi; \
-    pecl clear-cache; \
-    rm -rf /tmp/pear; \
     apk del --no-network .build-deps
 
 # Copy Composer from official image

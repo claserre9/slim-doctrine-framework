@@ -28,7 +28,7 @@ jobs:
       - name: Get Composer Cache Directory
         id: composer-cache
         run: |
-          echo "dir=$(composer config cache-dir)" >> $GITHUB_OUTPUT
+          echo "dir=$(composer config cache-dir)" >> "$GITHUB_OUTPUT"
 
       - name: Cache Composer dependencies
         uses: actions/cache@v4
@@ -48,3 +48,46 @@ jobs:
 
       - name: Tests (PHPUnit)
         run: composer run test
+
+  docker:
+    runs-on: ubuntu-latest
+    env:
+      # Compose names the app image <project>-app: build it under that name and reuse it with --no-build
+      COMPOSE_PROJECT_NAME: ci
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: ci-app
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build image without Xdebug
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          build-args: INSTALL_XDEBUG=0
+          tags: ci-app:no-xdebug
+          cache-from: type=gha
+
+      - name: Install dependencies
+        # The source tree is mounted into the containers; the app container runs as uid 1000
+        run: |
+          composer install --prefer-dist --no-progress --no-interaction
+          mkdir -p var && chmod 777 var
+
+      - name: Smoke test
+        run: .github/scripts/docker-smoke-test.sh
+        env:
+          IMAGE: ci-app
+          IMAGE_NO_XDEBUG: ci-app:no-xdebug
