@@ -6,91 +6,113 @@ use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
 use Doctrine\ORM\Configuration;
 use Doctrine\ORM\EntityManager;
+use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Mapping\Driver\AttributeDriver;
+use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Component\Cache\Adapter\PhpFilesAdapter;
 
-class DoctrineFactory
+final class DoctrineFactory
 {
-    public static function createEntityManager(Configuration $config, Connection $connection): EntityManager
+    private const DEFAULT_PORTS = [
+        'pdo_mysql' => 3306,
+        'pdo_pgsql' => 5432,
+    ];
+
+    private const CHARSETS = [
+        'pdo_mysql' => 'utf8mb4',
+        'pdo_pgsql' => 'utf8',
+    ];
+
+    /**
+     * @param array{
+     *     dev_mode: bool,
+     *     entity_dirs: list<string>,
+     *     cache_dir: string,
+     *     proxy_dir: string,
+     *     connection: array<string, mixed>
+     * } $settings
+     */
+    public function __construct(
+        private readonly array $settings,
+    ) {}
+
+    public function createEntityManager(Connection $connection, Configuration $config): EntityManagerInterface
     {
         return new EntityManager($connection, $config);
     }
 
-    public static function createConfiguration(): Configuration
+    public function createConfiguration(): Configuration
     {
         $config = new Configuration();
 
-        $config->setMetadataCache(self::createCache('metadata'));
-        $config->setQueryCache(self::createCache('queries'));
+        $config->setMetadataCache($this->createCache('metadata'));
+        $config->setQueryCache($this->createCache('queries'));
 
-        $driverImpl = new AttributeDriver([__DIR__ . '/../../src/Entities']);
-        $config->setMetadataDriverImpl($driverImpl);
+        $config->setMetadataDriverImpl(new AttributeDriver($this->settings['entity_dirs']));
 
-        $config->setProxyDir(__DIR__ . '/../../var/cache/doctrine/proxies');
+        $config->setProxyDir($this->settings['proxy_dir']);
         $config->setProxyNamespace('App\Proxies');
-        $config->setAutoGenerateProxyClasses(self::isDevelopment());
+        $config->setAutoGenerateProxyClasses($this->settings['dev_mode']);
 
         return $config;
     }
 
-    public static function createConnection(): Connection
+    public function createConnection(Configuration $config): Connection
     {
-        $driver = $_ENV['DB_DRIVER'] ?? 'pdo_sqlite';
-        $params = ['driver' => $driver];
+        return DriverManager::getConnection($this->connectionParams(), $config);
+    }
 
-        switch ($driver) {
-            case 'pdo_sqlite':
-                $path = $_ENV['DB_PATH'] ?? __DIR__ . '/../../var/data/database.sqlite';
-                self::ensureDirectoryExists(dirname($path));
-                $params['path'] = $path;
-                break;
+    /**
+     * @return array<string, mixed>
+     */
+    private function connectionParams(): array
+    {
+        $settings = $this->settings['connection'];
+        $driver   = $settings['driver'];
 
-            case 'pdo_mysql':
-                $params += [
-                    'host'     => $_ENV['DB_HOST'] ?? 'localhost',
-                    'port'     => $_ENV['DB_PORT'] ?? 3306,
-                    'dbname'   => $_ENV['DB_NAME'],
-                    'user'     => $_ENV['DB_USER'],
-                    'password' => $_ENV['DB_PASSWORD'],
-                    'charset'  => 'utf8mb4',
-                ];
-                break;
+        if ($driver === 'pdo_sqlite') {
+            self::ensureDirectoryExists(dirname($settings['path']));
 
-            case 'pdo_pgsql':
-                $params += [
-                    'host'     => $_ENV['DB_HOST'] ?? 'localhost',
-                    'port'     => $_ENV['DB_PORT'] ?? 5432,
-                    'dbname'   => $_ENV['DB_NAME'],
-                    'user'     => $_ENV['DB_USER'],
-                    'password' => $_ENV['DB_PASSWORD'],
-                    'charset'  => 'utf8',
-                ];
-                break;
-
-            default:
-                throw new \InvalidArgumentException("Unsupported database driver: $driver");
+            return ['driver' => $driver, 'path' => $settings['path']];
         }
 
-        return DriverManager::getConnection($params);
+        if (!isset(self::DEFAULT_PORTS[$driver])) {
+            throw new \InvalidArgumentException("Unsupported database driver: $driver");
+        }
+
+        $missing = array_filter(['dbname' => 'DB_NAME', 'user' => 'DB_USER', 'password' => 'DB_PASSWORD'],
+            static fn (string $key): bool => ($settings[$key] ?? null) === null,
+            ARRAY_FILTER_USE_KEY
+        );
+        if ($missing !== []) {
+            throw new \RuntimeException(
+                sprintf('Missing environment variable(s) for %s: %s', $driver, implode(', ', $missing))
+            );
+        }
+
+        return [
+            'driver'   => $driver,
+            'host'     => $settings['host'],
+            'port'     => (int) ($settings['port'] ?? self::DEFAULT_PORTS[$driver]),
+            'dbname'   => $settings['dbname'],
+            'user'     => $settings['user'],
+            'password' => $settings['password'],
+            'charset'  => self::CHARSETS[$driver],
+        ];
     }
 
-    private static function createCache(string $type): ArrayAdapter|PhpFilesAdapter
+    private function createCache(string $namespace): CacheItemPoolInterface
     {
-        return self::isDevelopment()
+        return $this->settings['dev_mode']
             ? new ArrayAdapter()
-            : new PhpFilesAdapter("doctrine_$type");
-    }
-
-    private static function isDevelopment(): bool
-    {
-        return ($_ENV['APP_ENV'] ?? 'production') === 'development';
+            : new PhpFilesAdapter("doctrine_$namespace", 0, $this->settings['cache_dir']);
     }
 
     private static function ensureDirectoryExists(string $path): void
     {
-        if (!is_dir($path)) {
-            mkdir($path, 0755, true);
+        if (!is_dir($path) && !mkdir($path, 0755, true) && !is_dir($path)) {
+            throw new \RuntimeException("Unable to create directory: $path");
         }
     }
 }

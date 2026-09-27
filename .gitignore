@@ -1,7 +1,26 @@
+# Dependencies
 /vendor/
-/.idea/
+
+# Environment (commit .env.example only)
 .env
-/TASKS.md
-/var/cache/
-/var/data/
+.env.local
+.env.*.local
+
+# Runtime data, cache and logs
+/var/
+
+# Local tool overrides (shared configs are the *.dist files)
+/phpunit.xml
+/phpstan.neon
+
+# Tool caches
+/.phpunit.cache/
 /.phpunit.result.cache
+
+# IDE / editors / assistants
+/.idea/
+/.vscode/
+/.claude/settings.local.json
+
+# Personal notes
+/TASKS.md

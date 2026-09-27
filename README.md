@@ -24,20 +24,20 @@ A minimal Slim 4 + Doctrine ORM project with PHP-DI, Dotenv, and a basic API. In
 
 ## Environment Variables
 Core flags:
-- APP_ENV: development | production (default: development)
+- APP_ENV: development | production (default: production)
 - APP_DEBUG: 1/0, true/false (default: true when APP_ENV != production)
 
 Database (Doctrine DBAL):
 - DB_DRIVER: pdo_sqlite | pdo_mysql | pdo_pgsql (default: pdo_sqlite)
 - For SQLite:
-  - DB_PATH: absolute/relative path to SQLite file (default: var/data/database.sqlite)
+  - DB_PATH: absolute path, or path relative to the project root (default: var/data/database.sqlite)
 - For MySQL:
   - DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
 - For PostgreSQL:
   - DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
 
 ## Routes
-- GET /health → {"status":"ok"}
+- GET / and GET /health → {"status":"ok"}
 - GET /api → Example JSON payload
 
 ## Error Handling
@@ -51,13 +51,24 @@ Database (Doctrine DBAL):
 - Consider adding Xdebug for step debugging in development.
 
 ## Project Structure
-- public/index.php: Front controller, routes, middleware
-- config/: Container definitions
+- public/index.php: HTTP front controller
+- bin/console: Doctrine ORM + Migrations CLI
+- config/bootstrap.php: Shared bootstrap (env, container, middleware, routes) used by the front controller, the console and the tests
+- config/settings.php: Application settings, built from environment variables
+- config/container.php: Container definitions
+- config/routes.php: Routes
 - src/: Application code (controllers, entities, config helpers)
+- migrations/: Doctrine migrations
 - var/: Runtime/cache (created on demand)
 
-## Running Tests
+## Console & Migrations
+- php bin/console list
+- php bin/console migrations:diff      # generate a migration from entity mapping
+- php bin/console migrations:migrate   # apply migrations
+
+## Running Tests & Static Analysis
 - composer test
+- composer analyse   # PHPStan level 6
 
 ## License
 MIT (or your preferred license).

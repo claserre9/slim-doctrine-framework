@@ -3,13 +3,14 @@
 namespace App\Controllers;
 
 use Psr\Http\Message\ResponseInterface;
-use Slim\Psr7\Request;
-use Slim\Psr7\Response;
+use Psr\Http\Message\ServerRequestInterface;
 
-class ApiController extends BaseController
+final class ApiController
 {
-    public function index(Request $request, Response $response, array $args): ResponseInterface
+    use RespondsWithJson;
+
+    public function index(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
-        return $this->json($response, ['name' => 'Bob', 'age' => 40]);
+        return $this->json($response, ['message' => 'Hello World', ]);
     }
 }

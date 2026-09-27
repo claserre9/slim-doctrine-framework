@@ -1,42 +1,27 @@
 <?php
 
-use DI\ContainerBuilder;
-use Slim\Factory\AppFactory;
-use Symfony\Component\Dotenv\Dotenv;
+use App\Config\Environment;
 
 require __DIR__ . '/../vendor/autoload.php';
 
-if (file_exists(__DIR__ . '/../.env')) {
-    (new Dotenv())->load(__DIR__ . '/../.env');
-}
-
-$appEnv   = $_ENV['APP_ENV'] ?? $_SERVER['APP_ENV'] ?? 'development';
-$debugEnv = $_ENV['APP_DEBUG'] ?? $_SERVER['APP_DEBUG'] ?? null;
-$debug    = $debugEnv !== null
-    ? in_array(strtolower((string) $debugEnv), ['1', 'true', 'yes', 'on'], true)
-    : ($appEnv !== 'production');
-
-ini_set('display_errors', $debug ? '1' : '0');
-ini_set('display_startup_errors', $debug ? '1' : '0');
-
 try {
-    $builder = new ContainerBuilder();
-    $builder->addDefinitions(require __DIR__ . '/../config/container.php');
-    $container = $builder->build();
+    $app = require __DIR__ . '/../config/bootstrap.php';
 
-    $app = AppFactory::createFromContainer($container);
-    $app->addBodyParsingMiddleware();
-    $app->addRoutingMiddleware();
-    $app->addErrorMiddleware($debug, true, true);
-
-    (require __DIR__ . '/../config/routes.php')($app);
+    $debug = $app->getContainer()->get('settings')['debug'];
+    ini_set('display_errors', $debug ? '1' : '0');
+    ini_set('display_startup_errors', $debug ? '1' : '0');
 
     $app->run();
 } catch (\Throwable $e) {
-    if ($debug) {
-        header('Content-Type: text/plain');
-        echo 'Application error: ' . $e->getMessage();
+    error_log((string) $e);
+
+    if (!headers_sent()) {
+        http_response_code(500);
+        header('Content-Type: application/json');
     }
+
+    echo json_encode(
+        ['error' => Environment::isDebug() ? $e->getMessage() : 'Internal Server Error'],
+        JSON_THROW_ON_ERROR
+    );
 }
-
-
