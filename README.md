@@ -1,6 +1,6 @@
 # Slim + Doctrine Skeleton
 
-A minimal Slim 4 + Doctrine ORM project with PHP-DI, Dotenv, Doctrine Migrations and a basic JSON API. Includes a health endpoint, CORS, request validation, JSON error responses and a Dockerized dev stack.
+A minimal Slim 4 + Doctrine ORM project with PHP-DI, Dotenv, Doctrine Migrations and a basic JSON API. Includes a health endpoint, CORS, request validation (symfony/validator), JSON error responses and a Dockerized dev stack.
 
 ## Requirements
 - PHP 8.2+
@@ -63,9 +63,39 @@ Per-environment overrides: create config/settings.{APP_ENV}.php returning a part
 - config/settings.php: Application settings, built from environment variables
 - config/container.php: Container definitions
 - config/routes.php: Routes
-- src/: Application code (Controllers, Middleware, Handlers, Validation, Entities, Config)
+- src/: Application code (Controllers, Requests, Validation, Middleware, Handlers, Entities, Config)
 - migrations/: Doctrine migrations
 - var/: Runtime/cache (created on demand)
+
+## Request Validation
+Request input is described by a DTO in src/Requests whose constructor parameters carry
+symfony/validator constraints. Controllers map and validate it explicitly with `RequestMapper`:
+
+```php
+final class CreateUserRequest
+{
+    public function __construct(
+        #[Assert\NotBlank, Assert\Length(min: 2)]
+        public readonly string $name,
+        #[Assert\Email]
+        public readonly string $email,
+        public readonly bool $newsletter = false,
+    ) {
+    }
+}
+
+// In a controller (RequestMapper is injected by the container)
+$input = $this->mapper->map($request, CreateUserRequest::class);
+```
+
+- Input comes from the query params merged with the parsed body (the body wins); unknown keys are ignored.
+- Values are cast to the declared scalar types (`int`, `float`, `bool`, `string`, `array`), so query strings work as expected.
+- Missing parameters use their default value, or `null` when nullable; otherwise they are reported as required.
+- Invalid input throws a `ValidationException`, rendered as a 422 with the errors per field, in every environment:
+  `{"error": {"code": 422, "message": "422 Unprocessable Entity", "errors": {"name": ["This value is too short. It should have 2 characters or more."]}}}`
+
+Entities keep their own invariants (constructor/method checks, database constraints): request DTOs validate
+what the client sends, entities guarantee they can never be in an invalid state.
 
 ## Console & Migrations
 - php bin/console list

@@ -85,12 +85,18 @@ class HttpTest extends TestCase
         $this->assertSame($expected, $this->json($response));
     }
 
-    public function testInvalidInputReturns422WithDetails(): void
+    public function testInvalidInputReturns422WithErrorsEvenInProduction(): void
     {
-        $response = $this->request('GET', '/api?name=A');
+        $response = $this->request('GET', '/api?name=A', env: ['APP_ENV' => 'production', 'APP_DEBUG' => '0']);
 
         $this->assertSame(422, $response->getStatusCode());
-        $this->assertSame(['name' => ['must be at least 2 characters']], $this->json($response)['error']['details']);
+        $this->assertSame([
+            'error' => [
+                'code' => 422,
+                'message' => '422 Unprocessable Entity',
+                'errors' => ['name' => ['This value is too short. It should have 2 characters or more.']],
+            ],
+        ], $this->json($response));
     }
 
     public function testUnknownRouteReturnsJson404WithoutDetailsInProduction(): void

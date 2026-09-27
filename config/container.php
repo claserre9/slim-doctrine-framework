@@ -5,6 +5,8 @@ use Doctrine\DBAL\Connection;
 use Doctrine\ORM\Configuration;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Container\ContainerInterface;
+use Symfony\Component\Validator\Validation;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 return [
     'settings' => require __DIR__ . '/settings.php',
@@ -15,4 +17,8 @@ return [
     Connection::class             => static fn (DoctrineFactory $f, Configuration $config) => $f->createConnection($config),
     EntityManagerInterface::class => static fn (DoctrineFactory $f, Connection $connection, Configuration $config)
         => $f->createEntityManager($connection, $config),
+
+    ValidatorInterface::class => static fn () => Validation::createValidatorBuilder()
+        ->enableAttributeMapping()
+        ->getValidator(),
 ];

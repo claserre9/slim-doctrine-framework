@@ -2,6 +2,7 @@
 
 namespace App\Handlers;
 
+use App\Validation\ValidationException;
 use Psr\Http\Message\ResponseInterface;
 use Slim\Exception\HttpException;
 use Slim\Exception\HttpMethodNotAllowedException;
@@ -24,6 +25,10 @@ final class JsonErrorHandler extends ErrorHandler
                 ? $exception->getTitle()
                 : 'Internal Server Error',
         ];
+
+        if ($exception instanceof ValidationException) {
+            $error['errors'] = $exception->getErrors();
+        }
 
         if ($this->displayErrorDetails) {
             $error['details'] = [
