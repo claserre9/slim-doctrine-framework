@@ -53,6 +53,17 @@ final class JsonErrorHandler extends ErrorHandler
     }
 
     /**
+     * Client errors (4xx: unknown route, invalid input...) are expected in normal
+     * operation: only server errors are logged.
+     */
+    protected function writeToErrorLog(): void
+    {
+        if ($this->statusCode >= 500) {
+            parent::writeToErrorLog();
+        }
+    }
+
+    /**
      * @return list<array{file: ?string, line: ?int, function: string, class: ?string}>
      */
     private function formatTrace(Throwable $exception): array
