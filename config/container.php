@@ -1,6 +1,7 @@
 <?php
 
 use App\Config\DoctrineFactory;
+use App\Services\AuthService;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\Configuration;
 use Doctrine\ORM\EntityManagerInterface;
@@ -17,6 +18,9 @@ return [
     Connection::class             => static fn (DoctrineFactory $f, Configuration $config) => $f->createConnection($config),
     EntityManagerInterface::class => static fn (DoctrineFactory $f, Connection $connection, Configuration $config)
         => $f->createEntityManager($connection, $config),
+
+    AuthService::class => DI\autowire()
+        ->constructorParameter('tokenTtl', DI\factory(static fn (ContainerInterface $c) => $c->get('settings')['auth']['token_ttl'])),
 
     ValidatorInterface::class => static fn () => Validation::createValidatorBuilder()
         ->enableAttributeMapping()

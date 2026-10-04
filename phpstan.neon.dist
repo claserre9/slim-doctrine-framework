@@ -8,4 +8,5 @@ parameters:
         - config
         - public
         - tests
+        - migrations
         - bin/console

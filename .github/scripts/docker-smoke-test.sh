@@ -59,6 +59,30 @@ done
 $COMPOSE exec -T app php bin/console migrations:status | grep -q 'PDO\\PgSQL\\Driver' || fail "app is not using Postgres"
 echo "Doctrine -> Postgres OK"
 
+echo "--- Migrations on Postgres"
+$COMPOSE exec -T app php bin/console migrations:migrate --no-interaction
+$COMPOSE exec -T app php bin/console orm:validate-schema || fail "database schema does not match the entities"
+
+echo "--- Users and authentication"
+status() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
+
+created=$(curl -sS -X POST http://localhost:8080/users -H 'Content-Type: application/json' \
+    -d '{"email":"smoke@example.com","name":"Smoke Test","password":"correct horse"}')
+echo "$created" | grep -q '"email":"smoke@example.com"' || fail "POST /users: $created"
+
+login=$(curl -sS -X POST http://localhost:8080/auth/login -H 'Content-Type: application/json' \
+    -d '{"email":"smoke@example.com","password":"correct horse"}')
+token=$(echo "$login" | sed -n 's/.*"token":"\([0-9a-f]\{64\}\)".*/\1/p')
+[ -n "$token" ] || fail "POST /auth/login: $login"
+
+me=$(curl -sS http://localhost:8080/auth/me -H "Authorization: Bearer $token")
+echo "$me" | grep -q '"email":"smoke@example.com"' || fail "GET /auth/me: $me"
+
+[ "$(status http://localhost:8080/auth/me)" = 401 ] || fail "GET /auth/me without token should be 401"
+[ "$(status -X POST http://localhost:8080/auth/logout -H "Authorization: Bearer $token")" = 204 ] || fail "logout failed"
+[ "$(status http://localhost:8080/auth/me -H "Authorization: Bearer $token")" = 401 ] || fail "token still valid after logout"
+echo "register -> login -> me -> logout OK"
+
 trap - EXIT
 $COMPOSE down -v
 echo "Docker smoke test passed"

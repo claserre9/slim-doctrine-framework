@@ -3,11 +3,13 @@
 namespace App\Config;
 
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Driver\AbstractSQLiteDriver\Middleware\EnableForeignKeys;
 use Doctrine\DBAL\DriverManager;
 use Doctrine\ORM\Configuration;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Mapping\Driver\AttributeDriver;
+use Doctrine\ORM\Proxy\ProxyFactory;
 use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Component\Cache\Adapter\PhpFilesAdapter;
@@ -54,13 +56,21 @@ final class DoctrineFactory
 
         $config->setProxyDir($this->settings['proxy_dir']);
         $config->setProxyNamespace('App\Proxies');
-        $config->setAutoGenerateProxyClasses($this->settings['dev_mode']);
+        // In production, proxies are generated once (or ahead of time with orm:generate-proxies)
+        $config->setAutoGenerateProxyClasses($this->settings['dev_mode']
+            ? ProxyFactory::AUTOGENERATE_ALWAYS
+            : ProxyFactory::AUTOGENERATE_FILE_NOT_EXISTS);
 
         return $config;
     }
 
     public function createConnection(Configuration $config): Connection
     {
+        if ($this->settings['connection']['driver'] === 'pdo_sqlite') {
+            // SQLite ignores foreign keys (and ON DELETE CASCADE) unless enabled per connection
+            $config->setMiddlewares([...$config->getMiddlewares(), new EnableForeignKeys()]);
+        }
+
         return DriverManager::getConnection($this->connectionParams(), $config);
     }
 
@@ -73,6 +83,10 @@ final class DoctrineFactory
         $driver = $settings['driver'];
 
         if ($driver === 'pdo_sqlite') {
+            if ($settings['path'] === ':memory:') {
+                return ['driver' => $driver, 'memory' => true];
+            }
+
             self::ensureDirectoryExists(dirname($settings['path']));
 
             return ['driver' => $driver, 'path' => $settings['path']];

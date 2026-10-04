@@ -11,6 +11,9 @@
     <php>
         <!-- Error responses are asserted by the tests: keep Slim's error log out of the output -->
         <ini name="error_log" value="/dev/null"/>
+        <!-- Each application instance gets its own empty in-memory database -->
+        <env name="DB_DRIVER" value="pdo_sqlite" force="true"/>
+        <env name="DB_PATH" value=":memory:" force="true"/>
     </php>
     <source>
         <include>

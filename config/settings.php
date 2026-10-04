@@ -4,7 +4,7 @@ use App\Config\Environment;
 
 $root = dirname(__DIR__);
 
-$resolvePath = static fn (string $path): string => str_starts_with($path, '/') ? $path : $root . '/' . $path;
+$resolvePath = static fn (string $path): string => str_starts_with($path, '/') || $path === ':memory:' ? $path : $root . '/' . $path;
 
 $settings = [
     'env'   => Environment::name(),
@@ -18,6 +18,11 @@ $settings = [
         'expose_headers' => Environment::list('CORS_EXPOSE_HEADERS'),
         'credentials'    => Environment::bool('CORS_CREDENTIALS'),
         'max_age'        => (int) Environment::get('CORS_MAX_AGE', 600),
+    ],
+
+    'auth' => [
+        // Lifetime of API tokens, in seconds (default: 24 hours)
+        'token_ttl' => (int) Environment::get('AUTH_TOKEN_TTL', 86400),
     ],
 
     'doctrine' => [

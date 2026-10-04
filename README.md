@@ -18,7 +18,10 @@ A minimal Slim 4 + Doctrine ORM project with PHP-DI, Dotenv, Doctrine Migrations
    - cp .env.example .env
    - Edit .env to match your local setup (DB settings, environment, debug flags)
 
-4. Run the app locally (PHP built-in server)
+4. Create the database schema
+   - php bin/console migrations:migrate
+
+5. Run the app locally (PHP built-in server)
    - composer start
    - Open http://localhost:8080/health to verify: you should see {"status":"ok"}
 
@@ -40,11 +43,49 @@ CORS (comma-separated lists):
 - CORS_ORIGINS (default: *), CORS_METHODS, CORS_HEADERS, CORS_EXPOSE_HEADERS
 - CORS_CREDENTIALS (default: 0), CORS_MAX_AGE (default: 600)
 
+Authentication:
+- AUTH_TOKEN_TTL: lifetime of API tokens in seconds (default: 86400 = 24 hours)
+
 Per-environment overrides: create config/settings.{APP_ENV}.php returning a partial settings array.
 
 ## Routes
-- GET / and GET /health → {"status":"ok"}
-- GET /api?name=Ada → {"message":"Hello Ada"} (`name` is optional, min. 2 chars; invalid input returns 422)
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/`, `/health` | | `{"status":"ok"}` |
+| GET | `/api?name=Ada` | | `{"message":"Hello Ada"}` (example of request validation) |
+| POST | `/users` | | Create an account (`email`, `name`, `password`) → 201 |
+| POST | `/auth/login` | | Exchange `email` + `password` for a bearer token |
+| POST | `/auth/logout` | ✓ | Revoke the current token → 204 |
+| GET | `/auth/me` | ✓ | The authenticated user |
+| GET | `/users?page=1&limit=20` | ✓ | Paginated list: `{"data": [...], "meta": {"page", "limit", "total"}}` |
+| GET | `/users/{id}` | ✓ | One user |
+| PATCH | `/users/{id}` | ✓ (self) | Update `email`, `name` and/or `password` (omitted fields are unchanged) |
+| DELETE | `/users/{id}` | ✓ (self) | Delete the account and its tokens → 204 |
+
+Users can read every account but only modify or delete their own (403 otherwise).
+Users are never serialized with their password hash.
+
+## Authentication
+```sh
+curl -X POST localhost:8080/users -H 'Content-Type: application/json' \
+  -d '{"email":"ada@example.com","name":"Ada Lovelace","password":"correct horse"}'
+
+curl -X POST localhost:8080/auth/login -H 'Content-Type: application/json' \
+  -d '{"email":"ada@example.com","password":"correct horse"}'
+# {"token":"3f9c…","token_type":"Bearer","expires_at":"2026-10-01T12:00:00+00:00"}
+
+curl localhost:8080/auth/me -H 'Authorization: Bearer 3f9c…'
+```
+
+- Tokens are random (256 bits), opaque and revocable. Only their SHA-256 hash is stored (`api_tokens` table),
+  so a database leak does not expose usable tokens. They expire after AUTH_TOKEN_TTL; expired tokens are
+  deleted when used.
+- Passwords are hashed with PHP's `password_hash()` (bcrypt) and transparently rehashed on login when the
+  algorithm or cost changes. Wrong password and unknown email return the same 401, in about the same time.
+- Changing the password revokes all the user's other tokens; deleting the account revokes all of them.
+- Protect a route by adding it to the group using `AuthMiddleware` in config/routes.php. In a controller,
+  `AuthMiddleware::user($request)` returns the authenticated user.
+- Not included yet: rate limiting of /auth/login, roles/permissions, password reset, email verification.
 
 ## Error Handling
 - All errors are returned as JSON: {"error": {"code": 404, "message": "404 Not Found"}}
@@ -63,7 +104,14 @@ Per-environment overrides: create config/settings.{APP_ENV}.php returning a part
 - config/settings.php: Application settings, built from environment variables
 - config/container.php: Container definitions
 - config/routes.php: Routes
-- src/: Application code (Controllers, Requests, Validation, Middleware, Handlers, Entities, Config)
+- src/: Application code
+  - Controllers/: HTTP actions (thin: map input, call a service, return JSON)
+  - Requests/: input DTOs with validation constraints
+  - Responses/: JSON representations of entities
+  - Services/: business logic (UserService, AuthService)
+  - Repositories/: database queries
+  - Entities/: Doctrine entities (User, ApiToken)
+  - Middleware/, Handlers/, Validation/, Config/: infrastructure
 - migrations/: Doctrine migrations
 - var/: Runtime/cache (created on demand)
 
@@ -95,12 +143,20 @@ $input = $this->mapper->map($request, CreateUserRequest::class);
   `{"error": {"code": 422, "message": "422 Unprocessable Entity", "errors": {"name": ["This value is too short. It should have 2 characters or more."]}}}`
 
 Entities keep their own invariants (constructor/method checks, database constraints): request DTOs validate
-what the client sends, entities guarantee they can never be in an invalid state.
+what the client sends, entities guarantee they can never be in an invalid state (see src/Entities/User.php).
 
 ## Console & Migrations
 - php bin/console list
+- php bin/console migrations:migrate   # apply migrations (run it once after install)
 - php bin/console migrations:diff      # generate a migration from entity mapping
-- php bin/console migrations:migrate   # apply migrations
+- php bin/console orm:validate-schema  # check that the database matches the entities
+
+Migrations describe tables with the DBAL schema API (see migrations/Version20260930120000.php), so the same
+migration runs on SQLite, PostgreSQL and MySQL. Note that `migrations:diff` writes SQL for the current
+database platform only.
+
+The tests apply the real migrations to an in-memory SQLite database and fail if the resulting schema differs
+from the entity mapping. The Docker job of the CI does the same on PostgreSQL.
 
 ## Running Tests & Quality Checks
 - composer test       # PHPUnit

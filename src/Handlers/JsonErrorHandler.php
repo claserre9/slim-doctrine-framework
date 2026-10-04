@@ -6,6 +6,7 @@ use App\Validation\ValidationException;
 use Psr\Http\Message\ResponseInterface;
 use Slim\Exception\HttpException;
 use Slim\Exception\HttpMethodNotAllowedException;
+use Slim\Exception\HttpUnauthorizedException;
 use Slim\Handlers\ErrorHandler;
 use Throwable;
 
@@ -47,6 +48,10 @@ final class JsonErrorHandler extends ErrorHandler
 
         if ($exception instanceof HttpMethodNotAllowedException) {
             $response = $response->withHeader('Allow', implode(', ', $exception->getAllowedMethods()));
+        }
+
+        if ($exception instanceof HttpUnauthorizedException) {
+            $response = $response->withHeader('WWW-Authenticate', 'Bearer');
         }
 
         return $response;

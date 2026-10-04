@@ -1,6 +1,7 @@
 #!/usr/bin/env php
 <?php
 
+use Doctrine\DBAL\Schema\AbstractAsset;
 use Doctrine\Migrations\Configuration\EntityManager\ExistingEntityManager;
 use Doctrine\Migrations\Configuration\Migration\ConfigurationArray;
 use Doctrine\Migrations\DependencyFactory;
@@ -8,22 +9,34 @@ use Doctrine\Migrations\Tools\Console\ConsoleRunner as MigrationsConsoleRunner;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\Console\ConsoleRunner;
 use Doctrine\ORM\Tools\Console\EntityManagerProvider\SingleManagerProvider;
+use Symfony\Component\Console\Input\ArgvInput;
 
 /** @var \Slim\App<\Psr\Container\ContainerInterface> $slim */
 $slim      = require __DIR__ . '/../config/bootstrap.php';
 $container = $slim->getContainer();
 
 $entityManager = $container->get(EntityManagerInterface::class);
+$migrationsConfig = $container->get('settings')['migrations'];
+$input = new ArgvInput();
+
+// The migrations table is not an entity: hide it from the ORM schema tools, or they would
+// want to drop it. Only for orm:* commands: Doctrine Migrations itself needs to see it.
+if (str_starts_with((string) $input->getFirstArgument(), 'orm:')) {
+    $migrationsTable = $migrationsConfig['table_storage']['table_name'];
+    $entityManager->getConnection()->getConfiguration()->setSchemaAssetsFilter(
+        static fn (string|AbstractAsset $asset): bool => ($asset instanceof AbstractAsset ? $asset->getName() : $asset) !== $migrationsTable,
+    );
+}
 
 $app = ConsoleRunner::createApplication(new SingleManagerProvider($entityManager));
 
 MigrationsConsoleRunner::addCommands($app, DependencyFactory::fromEntityManager(
-    new ConfigurationArray($container->get('settings')['migrations']),
+    new ConfigurationArray($migrationsConfig),
     new ExistingEntityManager($entityManager),
 ));
 
 try {
-    $app->run();
+    $app->run($input);
 } catch (Exception $e) {
     fwrite(STDERR, $e->getMessage() . PHP_EOL);
     exit(1);
